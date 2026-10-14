@@ -192,6 +192,30 @@ pip install -r requirements-lora.txt
    Hasilnya: `models/phi3-lora-q4.gguf`. Jalankan server dengan
    `PHI3_MODEL_PATH=models/phi3-lora-q4.gguf ./run.sh`.
 
+### Model `marbel` (untuk Marbel AI)
+
+Preset `marbel` adalah adapter LoRA yang dilatih khusus untuk
+[Marbel AI](https://antono4.github.io/MarbelAI/) pada dataset
+`data/marbel_instructions.jsonl` (asisten gratis berbahasa Indonesia), lalu
+di-merge dan dikuantisasi menjadi `models/marbel-phi3-q4.gguf`:
+
+```bash
+python scripts/train_lora.py --data data/marbel_instructions.jsonl \
+    --output models/adapters/marbel-lora --epochs 1 --rank 8 --max-length 128
+python scripts/merge_and_convert.py --adapter models/adapters/marbel-lora \
+    --merged /tmp/marbel-merged --gguf models/marbel-phi3-q4.gguf --quant Q4_K_M
+```
+
+Jalankan server dengan preset itu:
+
+```bash
+PHI3_MODEL=marbel ./run.sh
+```
+
+Server mengaktifkan **CORS** (`PHI3_ALLOW_ORIGIN`, default `*`) sehingga halaman
+Marbel AI di GitHub Pages dapat memanggil `/v1/chat/completions` langsung dari
+browser. Atur ke origin tertentu untuk produksi.
+
 ## Catatan performa
 
 Berjalan di CPU (4 vCPU, ~15 GB RAM). Kecepatan generasi kira-kira 10–15 token/detik.

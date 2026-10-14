@@ -18,6 +18,7 @@ MODEL_PRESETS: dict[str, str] = {
     "q4": "models/Phi-3-mini-4k-instruct-q4.gguf",
     "q8": "models/Phi-3-mini-4k-instruct-q8.gguf",
     "lora": "models/phi3-lora-q4.gguf",
+    "marbel": "models/marbel-phi3-q4.gguf",
 }
 
 
@@ -73,6 +74,9 @@ class Settings:
     )
     host: str = field(default_factory=lambda: os.environ.get("PHI3_HOST", "0.0.0.0"))
     port: int = field(default_factory=lambda: _env_int("PHI3_PORT", 12000))
+    allow_origin: str = field(
+        default_factory=lambda: os.environ.get("PHI3_ALLOW_ORIGIN", "*")
+    )
 
     def resolved_model_path(self) -> Path:
         return Path(self.model_path).expanduser().resolve()

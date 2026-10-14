@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -22,6 +23,14 @@ from .engine import get_engine
 from .openai_api import router as openai_router
 
 app = FastAPI(title="Phi-3 Mini API", version=__version__)
+# Allow browser clients (e.g. the Marbel AI GitHub Pages UI) to call this API
+# directly from another origin. Restrict with PHI3_ALLOW_ORIGIN for production.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[settings.allow_origin],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+)
 app.include_router(openai_router)
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 

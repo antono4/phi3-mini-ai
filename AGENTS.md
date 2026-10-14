@@ -6,7 +6,7 @@ llama.cpp. Provides a CLI, a FastAPI REST API (custom + OpenAI-compatible), and
 a small web chat UI.
 
 ## Layout
-- `phi3/config.py` — central settings + model presets (`q4`, `q8`, `lora`).
+- `phi3/config.py` — central settings + model presets (`q4`, `q8`, `lora`, `marbel`).
 - `phi3/engine.py` — thread-safe llama.cpp wrapper (chat + streaming).
 - `phi3/server.py` — FastAPI app (`/health`, `/v1/chat`, `/v1/chat/stream`, `/`).
 - `phi3/openai_api.py` — OpenAI-compatible router (`/v1/chat/completions`,
@@ -35,6 +35,13 @@ a small web chat UI.
 - `models/*.gguf` and `llama.cpp/` are gitignored; don't commit them.
 
 ## Gotchas
+- CORS is enabled (`PHI3_ALLOW_ORIGIN`, default `*`) so browser clients such as
+  the Marbel AI GitHub Pages UI can call `/v1/chat/completions` directly. Set a
+  specific origin in production.
+- The `marbel` preset is the Phi-3 Mini LoRA adapter fine-tuned for Marbel AI
+  (`data/marbel_instructions.jsonl`, adapter in `models/adapters/marbel-lora`),
+  exported to `models/marbel-phi3-q4.gguf`. It is consumed by the Marbel AI repo
+  (`MARBEL_API_BASE` in its `.env`).
 - The sandbox `/workspace` volume is small (~25 GB). Stage large model
   intermediates (HF base, f16 GGUF, merged HF) under `/tmp` (larger overlay),
   then copy only the final quantized GGUF into `models/`.
