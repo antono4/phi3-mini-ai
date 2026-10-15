@@ -127,7 +127,7 @@
     <h3>Pengaturan koneksi</h3>
     <label for="apiBase">URL API (base)</label>
     <input id="apiBase" placeholder="http://localhost:12000" />
-    <div class="hint">Default: <code id="apiDefaultHint">—</code>. Kosongkan untuk deteksi otomatis.</div>
+    <div class="hint">Default: <code id="apiDefaultHint">—</code>. Samakan dengan default untuk deteksi otomatis.</div>
     <div class="testrow">
       <button type="button" id="testConn">Tes koneksi</button>
       <span id="testResult" class="hint"></span>
@@ -404,20 +404,22 @@
 
   const dlg = el("settings");
   const testResult = el("testResult");
+  const stripSlash = (u) => (u || "").trim().replace(/\/+$/, "");
   // What auto-discovery will use when no explicit URL is saved.
   function defaultApi() {
     return /\.github\.io$/i.test(location.hostname) ? BACKEND_DEFAULT : location.origin;
   }
   el("settingsBtn").addEventListener("click", () => {
-    el("apiBase").value = store.api || (API || "");
+    const def = defaultApi();
+    el("apiBase").value = store.api || def;
     el("sysPrompt").value = store.system || "";
-    el("apiDefaultHint").textContent = defaultApi();
+    el("apiDefaultHint").textContent = def;
     testResult.textContent = "";
     dlg.showModal();
   });
   el("cancelSettings").addEventListener("click", () => dlg.close());
   el("testConn").addEventListener("click", async () => {
-    const raw = el("apiBase").value.trim().replace(/\/$/, "");
+    const raw = stripSlash(el("apiBase").value);
     testResult.textContent = "menguji…";
     if (!raw) {
       const h = await probe(defaultApi());
@@ -431,11 +433,13 @@
   });
   el("resetConn").addEventListener("click", () => {
     store.api = "";
-    el("apiBase").value = "";
+    el("apiBase").value = defaultApi();
     testResult.textContent = "koneksi direset ke default";
   });
   el("saveSettings").addEventListener("click", async () => {
-    store.api = el("apiBase").value.trim();
+    const entered = stripSlash(el("apiBase").value);
+    // Matching the default means "auto", so no override is stored.
+    store.api = entered && entered !== stripSlash(defaultApi()) ? entered : "";
     store.system = el("sysPrompt").value.trim();
     dlg.close();
     API = "";
