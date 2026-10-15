@@ -16,7 +16,9 @@ sehingga cukup untuk dijalankan tanpa GPU.
   `/v1/models`) sehingga SDK/klien OpenAI (mis. `openai-python`, LangChain)
   bisa langsung dipakai.
 - Pilihan model lewat preset `q4` (default, ~2,3 GB) dan `q8` (~4,7 GB).
-- Web UI chat yang kecil dan ringan (disajikan langsung oleh server).
+- Web UI chat satu berkas (disajikan langsung oleh server): tema terang/gelap,
+  render markdown + blok kode, tombol salin dan ulangi jawaban, serta pemilih
+  preset model — tanpa build step dan tanpa CDN.
 - **Pipeline fine-tuning LoRA**: latih adapter, merge ke base, ekspor ke GGUF.
 - Konfigurasi lewat variabel environment.
 

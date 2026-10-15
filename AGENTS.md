@@ -14,7 +14,7 @@ a small web chat UI.
 - `phi3/cli.py` — terminal chat (`python -m phi3.cli`).
 - `scripts/` — `download_model.py`, `smoke_test.py`, LoRA pipeline
   (`train_lora.py`, `merge_and_convert.py`, `test_adapter.py`).
-- `static/index.html` — web UI.
+- `static/index.html` — web UI (single file: design tokens, chat, settings).
 
 ## Environment / build
 - Use the project venv: `.venv/bin/python` (Python 3.13).
@@ -39,6 +39,13 @@ a small web chat UI.
 - `models/*.gguf` and `llama.cpp/` are gitignored; don't commit them.
 
 ## Gotchas
+- The web UI is one self-contained `static/index.html` (no build step, no CDN):
+  design tokens in `:root`, dark/light via `data-theme` on `<html>`, and a small
+  markdown renderer. That renderer detects block structure on the raw text and
+  escapes each fragment as it emits it, so model output cannot inject HTML —
+  keep the escape-on-emit order if you extend it. `body` uses
+  `grid-template-columns: minmax(0, 1fr)`; with an `auto` track the topbar's
+  content width widens the column and the page overflows at ~768px.
 - Only one GGUF is kept in memory at a time. `get_engine()` closes the previous
   engine before loading another model; caching one engine per model path leaks
   ~2.5 GB per switch and will exhaust the sandbox (seen: 10.8 GB RSS). If you
