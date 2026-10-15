@@ -21,11 +21,15 @@ class Phi3Engine:
 
     def __init__(self, config: Settings | None = None) -> None:
         self.config = config or default_settings
+        self.key = str(self.config.resolved_model_path())
         self._lock = threading.Lock()
+        self._closed = False
         self._llm: Llama | None = None
 
     @property
     def llm(self) -> Llama:
+        if self._closed:
+            raise RuntimeError("engine was switched to another model; retry")
         if self._llm is None:
             model_path = self.config.require_model()
             self._llm = Llama(
@@ -37,6 +41,20 @@ class Phi3Engine:
                 verbose=False,
             )
         return self._llm
+
+    def close(self) -> None:
+        """Release the loaded model and free its memory.
+
+        Takes the generation lock first so a caller that is mid-generation is
+        not pulled out from under the native context.
+        """
+        with self._lock:
+            self._closed = True
+            if self._llm is not None:
+                close = getattr(self._llm, "close", None)
+                if callable(close):
+                    close()
+                self._llm = None
 
     def chat(
         self,
@@ -144,16 +162,27 @@ class Phi3Engine:
         }
 
 
-_engines: dict[str, Phi3Engine] = {}
-_engine_lock = threading.Lock()
+_current: tuple[str, Phi3Engine] | None = None
+_switch_lock = threading.Lock()
 
 
 def get_engine(config: Settings | None = None) -> Phi3Engine:
-    """Return a shared engine instance, cached per resolved model path."""
+    """Return the engine for the requested model.
+
+    Only one model is kept in memory at a time: loading a second GGUF while the
+    first is still resident doubles the RAM footprint and can exhaust the
+    machine, so asking for a different model closes the previous engine first.
+    The returned engine is safe to use after the switch because the caller's
+    generation holds the engine's own lock, which ``close`` waits on.
+    """
+    global _current
     config = config or default_settings
     key = str(config.resolved_model_path())
-    if key not in _engines:
-        with _engine_lock:
-            if key not in _engines:
-                _engines[key] = Phi3Engine(config)
-    return _engines[key]
+    with _switch_lock:
+        if _current is not None and _current[0] == key:
+            return _current[1]
+        if _current is not None:
+            _current[1].close()
+        engine = Phi3Engine(config)
+        _current = (key, engine)
+        return engine

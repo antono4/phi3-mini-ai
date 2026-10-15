@@ -22,10 +22,18 @@ router = APIRouter()
 
 
 def _engine_for(model: str | None):
-    """Pick an engine when the client asks for a known preset, else default."""
-    if model in MODEL_PRESETS:
-        return get_engine(settings.with_model(model))
-    return get_engine()
+    """Pick an engine when the client asks for a known preset, else default.
+
+    Unknown model names stay lenient (OpenAI clients send arbitrary names like
+    ``gpt-3.5-turbo``), but a known preset/path whose file is missing is a
+    client error and is reported as 404 rather than a 500 traceback.
+    """
+    config = settings.with_model(model) if model in MODEL_PRESETS else settings
+    try:
+        config.require_model()
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return get_engine(config)
 
 
 class ChatMessage(BaseModel):

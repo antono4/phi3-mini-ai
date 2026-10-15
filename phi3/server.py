@@ -12,9 +12,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from . import __version__
@@ -33,6 +33,17 @@ app.add_middleware(
 )
 app.include_router(openai_router)
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+
+
+@app.exception_handler(ValueError)
+async def _value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
+    """Map inference errors to 4xx instead of leaking 500 tracebacks.
+
+    llama.cpp raises ValueError for prompts that exceed the context window, and
+    the engine raises it for an empty message list. Both are caused by the
+    request, so a 400 with the reason is a better answer than a server error.
+    """
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
 class Message(BaseModel):
@@ -56,7 +67,14 @@ def _as_dicts(req: ChatRequest) -> list[dict[str, str]]:
 
 
 def _engine_for(req: ChatRequest):
-    return get_engine(settings.with_model(req.model))
+    config = settings.with_model(req.model)
+    try:
+        config.require_model()
+    except FileNotFoundError as exc:
+        # A requested preset/path with no file on disk is a client error, not a
+        # server fault; surface it as 404 instead of a 500 traceback.
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return get_engine(config)
 
 
 @app.get("/health")
