@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="id">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -8,153 +8,368 @@
   :root {
     --bg: #0b1020;
     --panel: #141a2e;
+    --panel-2: #1a2138;
     --user: #2563eb;
+    --user-2: #1d4ed8;
     --bot: #1f2740;
     --text: #e6e9f2;
     --muted: #8b93a7;
+    --line: #222b45;
+    --ok: #22c55e;
+    --err: #ef4444;
   }
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
-    margin: 0; height: 100vh; display: flex; flex-direction: column;
-    background: var(--bg); color: var(--text);
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    margin: 0; display: flex; flex-direction: column;
+    background: radial-gradient(1200px 600px at 50% -10%, #16203c 0%, var(--bg) 60%);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
   header {
-    padding: 14px 20px; border-bottom: 1px solid #222b45;
+    padding: 12px 16px; border-bottom: 1px solid var(--line);
     display: flex; align-items: center; gap: 10px;
+    background: rgba(11, 16, 32, .7); backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 5;
   }
-  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
-  header .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
-  header .model { color: var(--muted); font-size: 12px; margin-left: auto; }
-  #chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-  .msg { max-width: 760px; padding: 10px 14px; border-radius: 14px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
-  .msg.user { align-self: flex-end; background: var(--user); border-bottom-right-radius: 4px; }
-  .msg.assistant { align-self: flex-start; background: var(--bot); border-bottom-left-radius: 4px; }
-  .msg.error { align-self: flex-start; background: #7f1d1d; }
-  form { display: flex; gap: 10px; padding: 16px 20px; border-top: 1px solid #222b45; }
+  header h1 { font-size: 15px; margin: 0; font-weight: 650; letter-spacing: .2px; }
+  header .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); transition: background .3s; }
+  header .dot.online { background: var(--ok); box-shadow: 0 0 0 4px rgba(34,197,94,.15); }
+  header .dot.offline { background: var(--err); box-shadow: 0 0 0 4px rgba(239,68,68,.15); }
+  header .model { color: var(--muted); font-size: 12px; margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 34vw; }
+  .spacer { flex: 1; }
+  select, button {
+    font: inherit; font-size: 13px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--text); padding: 7px 10px; cursor: pointer;
+  }
+  select { max-width: 110px; }
+  button:hover { border-color: #35406b; }
+  button.primary { background: var(--user); border-color: var(--user); color: #fff; font-weight: 600; }
+  button.primary:hover { background: var(--user-2); border-color: var(--user-2); }
+  button.primary:disabled { opacity: .5; cursor: default; }
+  button.icon { padding: 7px 9px; line-height: 1; }
+
+  #chat { flex: 1; overflow-y: auto; padding: 22px 16px; display: flex; flex-direction: column; gap: 14px; scroll-behavior: smooth; }
+  .row { display: flex; width: 100%; }
+  .row.user { justify-content: flex-end; }
+  .msg {
+    max-width: min(760px, 86%); padding: 11px 15px; border-radius: 16px;
+    line-height: 1.55; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere;
+    font-size: 15px; animation: pop .18s ease-out;
+  }
+  @keyframes pop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .msg.user { background: linear-gradient(180deg, var(--user), var(--user-2)); border-bottom-right-radius: 5px; }
+  .msg.assistant { background: var(--bot); border: 1px solid #26304d; border-bottom-left-radius: 5px; }
+  .msg.error { background: #7f1d1d; border: 1px solid #b91c1c; }
+  .meta { font-size: 11px; color: var(--muted); margin: 2px 6px 0; }
+  .typing { display: inline-flex; gap: 4px; align-items: center; }
+  .typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite; }
+  .typing i:nth-child(2) { animation-delay: .2s; }
+  .typing i:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+
+  .empty { margin: auto; text-align: center; color: var(--muted); max-width: 520px; }
+  .empty h2 { color: var(--text); font-size: 22px; margin: 0 0 8px; }
+  .empty p { margin: 0 0 18px; font-size: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .chip { background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; font-size: 13px; color: var(--text); cursor: pointer; }
+  .chip:hover { border-color: var(--user); }
+
+  form { display: flex; gap: 10px; padding: 14px 16px; border-top: 1px solid var(--line); background: rgba(11,16,32,.8); backdrop-filter: blur(8px); }
   textarea {
-    flex: 1; resize: none; height: 52px; padding: 14px; border-radius: 12px;
+    flex: 1; resize: none; height: 52px; max-height: 180px; padding: 14px; border-radius: 14px;
     border: 1px solid #2a3555; background: var(--panel); color: var(--text);
-    font: inherit; outline: none;
+    font: inherit; font-size: 15px; outline: none; transition: border-color .15s;
   }
   textarea:focus { border-color: var(--user); }
-  button {
-    padding: 0 22px; border: 0; border-radius: 12px; background: var(--user);
-    color: white; font-weight: 600; cursor: pointer; font-size: 14px;
+  .hint { text-align: center; font-size: 11px; color: var(--muted); padding: 0 0 10px; }
+
+  dialog {
+    border: 1px solid var(--line); background: var(--panel); color: var(--text);
+    border-radius: 16px; padding: 20px; width: min(460px, 92vw);
   }
-  button:disabled { opacity: .5; cursor: default; }
-  button.secondary { background: #2a3555; padding: 0 16px; }
-  select {
-    padding: 6px 10px; border-radius: 10px; border: 1px solid #2a3555;
-    background: var(--panel); color: var(--text); font: inherit; font-size: 13px;
+  dialog::backdrop { background: rgba(0,0,0,.6); }
+  dialog h3 { margin: 0 0 14px; font-size: 16px; }
+  dialog label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 5px; }
+  dialog input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font: inherit; }
+  dialog .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+  @media (max-width: 560px) {
+    header .model { display: none; }
+    .msg { max-width: 92%; }
   }
 </style>
 </head>
 <body>
   <header>
-    <span class="dot"></span>
+    <span class="dot" id="dot"></span>
     <h1>Phi-3 Mini</h1>
-    <span class="model" id="model">loading…</span>
-    <select id="modelSelect" title="Model preset"></select>
-    <button class="secondary" id="reset" type="button">Reset</button>
+    <span class="model" id="modelLabel">menghubungkan…</span>
+    <span class="spacer"></span>
+    <select id="modelSelect" title="Preset model"></select>
+    <button class="icon" id="settingsBtn" title="Pengaturan koneksi">⚙</button>
+    <button class="icon" id="resetBtn" title="Bersihkan percakapan">↺</button>
   </header>
+
   <div id="chat"></div>
+
   <form id="form">
-    <textarea id="input" placeholder="Ask anything… (Enter to send, Shift+Enter for newline)" autofocus></textarea>
-    <button id="send" type="submit">Send</button>
+    <textarea id="input" placeholder="Tulis pesan… (Enter kirim, Shift+Enter baris baru)" autofocus></textarea>
+    <button class="primary" id="sendBtn" type="submit">Kirim</button>
   </form>
+  <div class="hint" id="endpoint">endpoint: —</div>
+
+  <dialog id="settings">
+    <h3>Pengaturan koneksi</h3>
+    <label for="apiBase">URL API (base)</label>
+    <input id="apiBase" placeholder="http://localhost:12000" />
+    <label for="sysPrompt">System prompt</label>
+    <input id="sysPrompt" placeholder="(opsional) mis. Anda asisten berbahasa Indonesia" />
+    <div class="actions">
+      <button type="button" id="cancelSettings">Batal</button>
+      <button type="button" class="primary" id="saveSettings">Simpan</button>
+    </div>
+  </dialog>
 
 <script>
-const chatEl = document.getElementById('chat');
-const form = document.getElementById('form');
-const input = document.getElementById('input');
-const sendBtn = document.getElementById('send');
-const modelEl = document.getElementById('model');
-let history = [];
-const modelSelect = document.getElementById('modelSelect');
+(() => {
+  "use strict";
 
-fetch('/health').then(r => r.json()).then(d => {
-  modelEl.textContent = d.model + (d.model_present ? '' : ' (missing!)');
-  (d.presets || []).forEach(p => {
-    const opt = document.createElement('option');
-    opt.value = p; opt.textContent = p;
-    modelSelect.appendChild(opt);
-  });
-}).catch(() => modelEl.textContent = 'offline');
+  const el = (id) => document.getElementById(id);
+  const chatEl = el("chat");
+  const form = el("form");
+  const input = el("input");
+  const sendBtn = el("sendBtn");
+  const dot = el("dot");
+  const modelLabel = el("modelLabel");
+  const modelSelect = el("modelSelect");
+  const endpointLabel = el("endpoint");
 
-function addMsg(role, text) {
-  const el = document.createElement('div');
-  el.className = 'msg ' + role;
-  el.textContent = text;
-  chatEl.appendChild(el);
-  chatEl.scrollTop = chatEl.scrollHeight;
-  return el;
-}
+  const store = {
+    get api() { return localStorage.getItem("phi3_api") || ""; },
+    set api(v) { v ? localStorage.setItem("phi3_api", v) : localStorage.removeItem("phi3_api"); },
+    get system() { return localStorage.getItem("phi3_system") || ""; },
+    set system(v) { v ? localStorage.setItem("phi3_system", v) : localStorage.removeItem("phi3_system"); },
+    get model() { return localStorage.getItem("phi3_model") || ""; },
+    set model(v) { v ? localStorage.setItem("phi3_model", v) : localStorage.removeItem("phi3_model"); },
+  };
 
-async function send(text) {
-  addMsg('user', text);
-  history.push({ role: 'user', content: text });
-  const bubble = addMsg('assistant', '');
-  sendBtn.disabled = true;
-  try {
-    const res = await fetch('/v1/chat/stream', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: history, max_tokens: 512, model: modelSelect.value }),
-    });
-    if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '', full = '';
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const parts = buffer.split('\n\n');
-      buffer = parts.pop();
-      for (const part of parts) {
-        const line = part.split('\n').find(l => l.startsWith('data: '));
-        if (!line) continue;
-        const data = line.slice(6);
-        if (data === '[DONE]') continue;
-        try {
-          const obj = JSON.parse(data);
-          if (obj.error) throw new Error(obj.error);
-          full += obj.delta || '';
-          bubble.textContent = full;
-          chatEl.scrollTop = chatEl.scrollHeight;
-        } catch (_) {}
-      }
+  let API = "";
+  let history = [];
+  let streaming = false;
+
+  // --- discover which base URL actually serves the API ---------------------
+  async function probe(base) {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 3500);
+      const res = await fetch(base.replace(/\/$/, "") + "/health", { signal: ctrl.signal });
+      clearTimeout(t);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data && data.status === "ok" ? data : null;
+    } catch { return null; }
+  }
+
+  async function discoverApi() {
+    const params = new URLSearchParams(location.search);
+    const candidates = [];
+    const explicit = params.get("api") || store.api;
+    if (explicit) candidates.push(explicit);
+    if (location.protocol.startsWith("http")) candidates.push(location.origin);
+    // Same hostname, backend default port (repo serves API on 12000).
+    if (location.hostname) {
+      candidates.push(`${location.protocol === "https:" ? "https:" : "http:"}//${location.hostname}:12000`);
     }
-    history.push({ role: 'assistant', content: full });
-  } catch (err) {
-    bubble.className = 'msg error';
-    bubble.textContent = 'Error: ' + err.message;
-  } finally {
-    sendBtn.disabled = false;
+    candidates.push("http://localhost:12000");
+
+    for (const cand of candidates) {
+      const base = cand.replace(/\/$/, "");
+      const health = await probe(base);
+      if (health) { API = base; return health; }
+    }
+    return null;
+  }
+
+  function setStatus(ok, text) {
+    dot.classList.toggle("online", ok);
+    dot.classList.toggle("offline", !ok);
+    modelLabel.textContent = text;
+    endpointLabel.textContent = "endpoint: " + (API || "—");
+  }
+
+  async function refreshHealth() {
+    const health = await discoverApi();
+    if (!health) { setStatus(false, "server tidak terjangkau"); return; }
+    const model = typeof health.model === "string" ? health.model : "model";
+    setStatus(true, model + (health.model_present === false ? " (belum diunduh)" : ""));
+    const presets = health.presets || [];
+    const current = modelSelect.value;
+    modelSelect.innerHTML = "";
+    presets.forEach((p) => {
+      const opt = document.createElement("option");
+      opt.value = p; opt.textContent = p;
+      modelSelect.appendChild(opt);
+    });
+    if (store.model && presets.includes(store.model)) modelSelect.value = store.model;
+    else if (current && presets.includes(current)) modelSelect.value = current;
+  }
+
+  // --- rendering -----------------------------------------------------------
+  function showEmpty() {
+    if (history.length) return;
+    chatEl.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.className = "empty";
+    wrap.innerHTML = "<h2>Mulai percakapan</h2><p>Chatbot Phi-3 Mini berjalan lokal di mesin ini.</p>";
+    const chips = document.createElement("div");
+    chips.className = "chips";
+    ["Halo, siapa kamu?", "Jelaskan fotosintesis singkat.", "Tulis fungsi Python untuk membalik string.", "Ide nama untuk kedai kopi?"]
+      .forEach((q) => {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "chip"; b.textContent = q;
+        b.addEventListener("click", () => send(q));
+        chips.appendChild(b);
+      });
+    wrap.appendChild(chips);
+    chatEl.appendChild(wrap);
+  }
+
+  function bubble(role, text) {
+    const row = document.createElement("div");
+    row.className = "row " + role;
+    const msg = document.createElement("div");
+    msg.className = "msg " + role;
+    msg.textContent = text;
+    row.appendChild(msg);
+    chatEl.appendChild(row);
+    chatEl.scrollTop = chatEl.scrollHeight;
+    return msg;
+  }
+
+  function typingBubble() {
+    const row = document.createElement("div");
+    row.className = "row assistant";
+    const msg = document.createElement("div");
+    msg.className = "msg assistant";
+    msg.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
+    row.appendChild(msg);
+    chatEl.appendChild(row);
+    chatEl.scrollTop = chatEl.scrollHeight;
+    return msg;
+  }
+
+  // --- messaging -----------------------------------------------------------
+  async function send(text) {
+    text = (text || "").trim();
+    if (!text || streaming) return;
+    if (!API) { const h = await refreshHealth(); if (!h) { bubble("error", "Tidak bisa terhubung ke server API."); return; } }
+
+    if (history.length === 0) chatEl.innerHTML = "";
+    bubble("user", text);
+    history.push({ role: "user", content: text });
+
+    const target = typingBubble();
+    streaming = true;
+    sendBtn.disabled = true;
+    input.value = "";
+    let full = "";
+
+    const payload = {
+      messages: history,
+      model: modelSelect.value || undefined,
+      max_tokens: 512,
+    };
+    const sys = store.system;
+    if (sys) payload.messages = [{ role: "system", content: sys }, ...history];
+
+    try {
+      const res = await fetch(API + "/v1/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok || !res.body) throw new Error("HTTP " + res.status);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      target.textContent = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop();
+        for (const part of parts) {
+          const line = part.split("\n").find((l) => l.startsWith("data: "));
+          if (!line) continue;
+          const data = line.slice(6);
+          if (data === "[DONE]") continue;
+          try {
+            const obj = JSON.parse(data);
+            if (obj.error) throw new Error(obj.error);
+            if (obj.delta) {
+              full += obj.delta;
+              target.textContent = full;
+              chatEl.scrollTop = chatEl.scrollHeight;
+            }
+          } catch (e) { if (e instanceof Error && e.message && !e.message.includes("JSON")) throw e; }
+        }
+      }
+      if (!full) target.textContent = "(balasan kosong)";
+      history.push({ role: "assistant", content: full });
+    } catch (err) {
+      target.classList.remove("assistant");
+      target.classList.add("error");
+      target.textContent = "Error: " + (err && err.message ? err.message : String(err));
+      history.pop();
+    } finally {
+      streaming = false;
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+
+  form.addEventListener("submit", (e) => { e.preventDefault(); send(input.value); });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
+  });
+  input.addEventListener("input", () => {
+    input.style.height = "52px";
+    input.style.height = Math.min(input.scrollHeight, 180) + "px";
+  });
+
+  el("resetBtn").addEventListener("click", () => {
+    history = [];
+    showEmpty();
     input.focus();
-  }
-}
+  });
 
-form.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const text = input.value.trim();
-  if (!text) return;
-  input.value = '';
-  send(text);
-});
+  modelSelect.addEventListener("change", () => { store.model = modelSelect.value; });
 
-input.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    form.requestSubmit();
-  }
-});
+  const dlg = el("settings");
+  el("settingsBtn").addEventListener("click", () => {
+    el("apiBase").value = store.api || (API || "");
+    el("sysPrompt").value = store.system || "";
+    dlg.showModal();
+  });
+  el("cancelSettings").addEventListener("click", () => dlg.close());
+  el("saveSettings").addEventListener("click", async () => {
+    store.api = el("apiBase").value.trim();
+    store.system = el("sysPrompt").value.trim();
+    dlg.close();
+    API = "";
+    const h = await refreshHealth();
+    if (!h) setStatus(false, "server tidak terjangkau");
+  });
 
-document.getElementById('reset').addEventListener('click', () => {
-  history = [];
-  chatEl.innerHTML = '';
-});
+  // --- init ----------------------------------------------------------------
+  showEmpty();
+  refreshHealth().then((h) => { if (h) input.focus(); });
+  setInterval(() => { if (!streaming) refreshHealth(); }, 30000);
+})();
 </script>
 </body>
 </html>
