@@ -94,7 +94,10 @@
   dialog h3 { margin: 0 0 14px; font-size: 16px; }
   dialog label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 5px; }
   dialog input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font: inherit; }
-  dialog .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+  dialog .hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  dialog .testrow { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  dialog .actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 18px; }
+  dialog .actions .spacer { flex: 1; }
   @media (max-width: 560px) {
     header .model { display: none; }
     .msg { max-width: 92%; }
@@ -124,9 +127,16 @@
     <h3>Pengaturan koneksi</h3>
     <label for="apiBase">URL API (base)</label>
     <input id="apiBase" placeholder="http://localhost:12000" />
+    <div class="hint">Default: <code id="apiDefaultHint">—</code>. Kosongkan untuk deteksi otomatis.</div>
+    <div class="testrow">
+      <button type="button" id="testConn">Tes koneksi</button>
+      <span id="testResult" class="hint"></span>
+    </div>
     <label for="sysPrompt">System prompt</label>
     <input id="sysPrompt" placeholder="(opsional) mis. Anda asisten berbahasa Indonesia" />
     <div class="actions">
+      <button type="button" id="resetConn">Reset koneksi</button>
+      <span class="spacer"></span>
       <button type="button" id="cancelSettings">Batal</button>
       <button type="button" class="primary" id="saveSettings">Simpan</button>
     </div>
@@ -393,12 +403,37 @@
   modelSelect.addEventListener("change", () => { store.model = modelSelect.value; });
 
   const dlg = el("settings");
+  const testResult = el("testResult");
+  // What auto-discovery will use when no explicit URL is saved.
+  function defaultApi() {
+    return /\.github\.io$/i.test(location.hostname) ? BACKEND_DEFAULT : location.origin;
+  }
   el("settingsBtn").addEventListener("click", () => {
     el("apiBase").value = store.api || (API || "");
     el("sysPrompt").value = store.system || "";
+    el("apiDefaultHint").textContent = defaultApi();
+    testResult.textContent = "";
     dlg.showModal();
   });
   el("cancelSettings").addEventListener("click", () => dlg.close());
+  el("testConn").addEventListener("click", async () => {
+    const raw = el("apiBase").value.trim().replace(/\/$/, "");
+    testResult.textContent = "menguji…";
+    if (!raw) {
+      const h = await probe(defaultApi());
+      testResult.textContent = h ? `OK — ${h.model || "model"}` : "gagal (default)";
+      return;
+    }
+    const h = await probe(raw);
+    testResult.textContent = h
+      ? `OK — ${h.model || "model"}${h.model_present === false ? " (belum diunduh)" : ""}`
+      : "gagal terhubung";
+  });
+  el("resetConn").addEventListener("click", () => {
+    store.api = "";
+    el("apiBase").value = "";
+    testResult.textContent = "koneksi direset ke default";
+  });
   el("saveSettings").addEventListener("click", async () => {
     store.api = el("apiBase").value.trim();
     store.system = el("sysPrompt").value.trim();

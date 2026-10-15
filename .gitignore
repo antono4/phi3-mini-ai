@@ -6,3 +6,4 @@ models/*.log
 .venv/
 *.log
 llama.cpp/
+nohup.out
