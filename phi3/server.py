@@ -78,6 +78,14 @@ def health() -> dict:
         "model_present": model_path.exists(),
         "preset": active,
         "presets": sorted(MODEL_PRESETS),
+        "presets_info": [
+            {
+                "name": name,
+                "available": (PROJECT_ROOT / rel).is_file(),
+                "path": rel,
+            }
+            for name, rel in sorted(MODEL_PRESETS.items())
+        ],
         "n_ctx": settings.n_ctx,
         "n_threads": settings.n_threads,
     }
