@@ -172,11 +172,18 @@
     } catch { return null; }
   }
 
+  // Public backend used when the UI is hosted on GitHub Pages (static hosting
+  // cannot run the model itself). Same-origin is preferred everywhere else, so
+  // running `./run.sh` locally still talks to localhost with no configuration.
+  const BACKEND_DEFAULT = "https://work-1-gtaafxhknxlltbgu.prod-runtime.all-hands.dev";
+
   async function discoverApi() {
     const params = new URLSearchParams(location.search);
     const candidates = [];
     const explicit = params.get("api") || store.api;
+    const isPagesHost = /\.github\.io$/i.test(location.hostname);
     if (explicit) candidates.push(explicit);
+    if (isPagesHost) candidates.push(BACKEND_DEFAULT);
     if (location.protocol.startsWith("http")) candidates.push(location.origin);
     // The backend serves plain HTTP on 12000, so only probe it over http://.
     // (Building https://<host>:12000 from an HTTPS page never resolves.)
@@ -184,6 +191,7 @@
       if (location.hostname) candidates.push(`http://${location.hostname}:12000`);
       candidates.push("http://localhost:12000");
     }
+    if (!isPagesHost) candidates.push(BACKEND_DEFAULT);
 
     for (const cand of candidates) {
       const base = cand.replace(/\/$/, "");
@@ -217,25 +225,32 @@
     const model = typeof health.model === "string" ? health.model : "model";
     setStatus(true, model + (health.model_present === false ? " (belum diunduh)" : ""));
     const presets = health.presets || [];
+    const info = health.presets_info || [];
+    const available = {};
+    info.forEach((p) => { available[p.name] = p.available; });
     const previous = modelSelect.value;
     modelSelect.innerHTML = "";
     presets.forEach((p) => {
       const opt = document.createElement("option");
-      opt.value = p; opt.textContent = p;
+      opt.value = p;
+      const known = typeof available[p] === "boolean";
+      opt.textContent = known && !available[p] ? p + " (belum diunduh)" : p;
+      if (known && !available[p]) opt.disabled = true;
       modelSelect.appendChild(opt);
     });
     // Prefer the user's saved choice, then the current selection, then the
     // preset that matches the model the server actually loaded (not the first
-    // option), then q4, then whatever exists.
+    // option), then q4, then whatever exists. Never auto-pick an unavailable
+    // preset, which would fail as soon as the user sends a message.
+    const usable = (c) => c && presets.includes(c) && available[c] !== false;
     const active = [
       store.model,
       previous,
       health.preset,
       presetForModel(health.model, presets),
       presets.includes("q4") ? "q4" : null,
-      presets[0],
-    ].find((c) => c && presets.includes(c));
-    if (active) modelSelect.value = active;
+    ].find(usable);
+    modelSelect.value = usable(active) ? active : presets[0];
   }
 
   // --- rendering -----------------------------------------------------------
@@ -346,7 +361,12 @@
     } catch (err) {
       target.classList.remove("assistant");
       target.classList.add("error");
-      target.textContent = "Error: " + (err && err.message ? err.message : String(err));
+      let m = err && err.message ? err.message : String(err);
+      if (/Model not found/i.test(m)) {
+        m += " — preset ini belum diunduh. Jalankan `python scripts/download_model.py q8` " +
+             "(atau pilih preset lain di kanan atas).";
+      }
+      target.textContent = "Error: " + m;
       history.pop();
     } finally {
       streaming = false;
