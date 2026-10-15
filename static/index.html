@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232563eb'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='18' font-weight='700' text-anchor='middle' fill='white'%3EP%3C/text%3E%3C/svg%3E" />
 <title>Phi-3 Mini Chat</title>
 <style>
   :root {
@@ -177,11 +178,12 @@
     const explicit = params.get("api") || store.api;
     if (explicit) candidates.push(explicit);
     if (location.protocol.startsWith("http")) candidates.push(location.origin);
-    // Same hostname, backend default port (repo serves API on 12000).
-    if (location.hostname) {
-      candidates.push(`${location.protocol === "https:" ? "https:" : "http:"}//${location.hostname}:12000`);
+    // The backend serves plain HTTP on 12000, so only probe it over http://.
+    // (Building https://<host>:12000 from an HTTPS page never resolves.)
+    if (location.protocol !== "https:") {
+      if (location.hostname) candidates.push(`http://${location.hostname}:12000`);
+      candidates.push("http://localhost:12000");
     }
-    candidates.push("http://localhost:12000");
 
     for (const cand of candidates) {
       const base = cand.replace(/\/$/, "");
@@ -198,21 +200,42 @@
     endpointLabel.textContent = "endpoint: " + (API || "—");
   }
 
+  // Longest preset token contained in the model filename, so a merged file
+  // like "marbel-phi3-q4.gguf" maps to "marbel" rather than "q4".
+  function presetForModel(modelName, presets) {
+    if (!modelName) return null;
+    const name = String(modelName).toLowerCase();
+    const matches = presets
+      .filter((p) => name.includes(p.toLowerCase()))
+      .sort((a, b) => b.length - a.length);
+    return matches[0] || null;
+  }
+
   async function refreshHealth() {
     const health = await discoverApi();
     if (!health) { setStatus(false, "server tidak terjangkau"); return; }
     const model = typeof health.model === "string" ? health.model : "model";
     setStatus(true, model + (health.model_present === false ? " (belum diunduh)" : ""));
     const presets = health.presets || [];
-    const current = modelSelect.value;
+    const previous = modelSelect.value;
     modelSelect.innerHTML = "";
     presets.forEach((p) => {
       const opt = document.createElement("option");
       opt.value = p; opt.textContent = p;
       modelSelect.appendChild(opt);
     });
-    if (store.model && presets.includes(store.model)) modelSelect.value = store.model;
-    else if (current && presets.includes(current)) modelSelect.value = current;
+    // Prefer the user's saved choice, then the current selection, then the
+    // preset that matches the model the server actually loaded (not the first
+    // option), then q4, then whatever exists.
+    const active = [
+      store.model,
+      previous,
+      health.preset,
+      presetForModel(health.model, presets),
+      presets.includes("q4") ? "q4" : null,
+      presets[0],
+    ].find((c) => c && presets.includes(c));
+    if (active) modelSelect.value = active;
   }
 
   // --- rendering -----------------------------------------------------------

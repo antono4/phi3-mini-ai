@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from . import __version__
-from .config import MODEL_PRESETS, settings
+from .config import MODEL_PRESETS, PROJECT_ROOT, settings
 from .engine import get_engine
 from .openai_api import router as openai_router
 
@@ -62,10 +62,21 @@ def _engine_for(req: ChatRequest):
 @app.get("/health")
 def health() -> dict:
     model_path = settings.resolved_model_path()
+    # Which preset (if any) points at the model currently loaded, so a UI can
+    # default its model selector to what the server actually serves.
+    active = next(
+        (
+            name
+            for name, rel in MODEL_PRESETS.items()
+            if (PROJECT_ROOT / rel).resolve() == model_path
+        ),
+        None,
+    )
     return {
         "status": "ok",
         "model": model_path.name,
         "model_present": model_path.exists(),
+        "preset": active,
         "presets": sorted(MODEL_PRESETS),
         "n_ctx": settings.n_ctx,
         "n_threads": settings.n_threads,
