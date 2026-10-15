@@ -135,7 +135,8 @@
     <label for="sysPrompt">System prompt</label>
     <input id="sysPrompt" placeholder="(opsional) mis. Anda asisten berbahasa Indonesia" />
     <div class="actions">
-      <button type="button" id="resetConn">Reset koneksi</button>
+      <button type="button" id="resetConn" title="Kembalikan URL ke default">Reset koneksi</button>
+      <button type="button" id="settingsResetAll" title="Hapus URL, system prompt, dan pilihan model yang tersimpan">Reset semua</button>
       <span class="spacer"></span>
       <button type="button" id="cancelSettings">Batal</button>
       <button type="button" class="primary" id="saveSettings">Simpan</button>
@@ -351,19 +352,25 @@
         const parts = buffer.split("\n\n");
         buffer = parts.pop();
         for (const part of parts) {
+          // The backend encodes errors as "event: error" with an "error" field.
+          if (/^event:\s*error/m.test(part)) {
+            const l = part.split("\n").find((x) => x.startsWith("data: "));
+            let msg = "server error";
+            if (l) { try { msg = JSON.parse(l.slice(6)).error || msg; } catch {} }
+            throw new Error(msg);
+          }
           const line = part.split("\n").find((l) => l.startsWith("data: "));
           if (!line) continue;
           const data = line.slice(6);
           if (data === "[DONE]") continue;
-          try {
-            const obj = JSON.parse(data);
-            if (obj.error) throw new Error(obj.error);
-            if (obj.delta) {
-              full += obj.delta;
-              target.textContent = full;
-              chatEl.scrollTop = chatEl.scrollHeight;
-            }
-          } catch (e) { if (e instanceof Error && e.message && !e.message.includes("JSON")) throw e; }
+          let obj;
+          try { obj = JSON.parse(data); } catch { continue; }
+          if (obj.error) throw new Error(obj.error);
+          if (obj.delta) {
+            full += obj.delta;
+            target.textContent = full;
+            chatEl.scrollTop = chatEl.scrollHeight;
+          }
         }
       }
       if (!full) target.textContent = "(balasan kosong)";
@@ -398,6 +405,17 @@
     history = [];
     showEmpty();
     input.focus();
+  });
+
+  el("settingsResetAll").addEventListener("click", () => {
+    store.api = "";
+    store.system = "";
+    store.model = "";
+    history = [];
+    API = "";
+    showEmpty();
+    dlg.close();
+    refreshHealth().then((h) => { if (!h) setStatus(false, "server tidak terjangkau"); else input.focus(); });
   });
 
   modelSelect.addEventListener("change", () => { store.model = modelSelect.value; });

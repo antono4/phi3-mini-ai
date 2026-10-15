@@ -9,7 +9,7 @@ sehingga cukup untuk dijalankan tanpa GPU.
 
 ## Fitur
 
-- Inferensi lokal penuh — tanpa panggilan API eksternal saat runtime.
+- Inferensi lokal penuh â€” tanpa panggilan API eksternal saat runtime.
 - Chat CLI dengan streaming token dan riwayat percakapan.
 - REST API (non-streaming & SSE streaming).
 - **Endpoint kompatibel OpenAI** (`/v1/chat/completions`, `/v1/completions`,
@@ -108,6 +108,18 @@ Semua pengaturan dapat dioverride lewat environment variable:
 | `PHI3_TOP_P` | `0.9` | Nucleus sampling |
 | `PHI3_SYSTEM_PROMPT` | (bawaan) | Peran/persona asisten |
 | `PHI3_PORT` | `12000` | Port server |
+| `PHI3_ALLOW_ORIGIN` | `*` | Origin yang diizinkan CORS |
+
+## Pengujian
+
+```bash
+python scripts/smoke_test.py        # engine + skema (butuh model)
+python scripts/api_test.py          # uji menyeluruh REST + OpenAI API (server harus jalan)
+```
+
+`api_test.py` memeriksa health/preset, validasi input, keempat preset, streaming
+SSE, endpoint kompatibel OpenAI, CORS, dan penanganan error (model hilang → 404,
+prompt melebihi context window → 400).
 
 ## Struktur proyek
 
@@ -218,5 +230,5 @@ browser. Atur ke origin tertentu untuk produksi.
 
 ## Catatan performa
 
-Berjalan di CPU (4 vCPU, ~15 GB RAM). Kecepatan generasi kira-kira 10–15 token/detik.
+Berjalan di CPU (4 vCPU, ~15 GB RAM). Kecepatan generasi kira-kira 10â€“15 token/detik.
 Naikkan `PHI3_N_GPU_LAYERS` bila ada GPU dengan build `llama-cpp-python` yang mendukung CUDA.

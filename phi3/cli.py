@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from .config import settings
+from .config import MODEL_PRESETS, settings
 from .engine import get_engine
 
 BANNER = """\
@@ -78,11 +78,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--model",
         default=None,
-        help="model preset (q4/q8) or a path to a GGUF file",
+        help=f"model preset ({'/'.join(sorted(MODEL_PRESETS))}) or a path to a GGUF file",
     )
     args = parser.parse_args(argv)
 
     engine = get_engine(settings.with_model(args.model))
+    try:
+        engine.config.require_model()
+    except FileNotFoundError as exc:
+        print(exc, file=sys.stderr)
+        return 1
     stream = not args.no_stream
     if args.prompt:
         _run_once(engine, args.prompt, stream)

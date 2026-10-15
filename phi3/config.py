@@ -89,7 +89,9 @@ class Settings:
         path = self.resolved_model_path()
         if not path.exists():
             raise FileNotFoundError(
-                f"Model not found at {path}. Run `python scripts/download_model.py` first."
+                f"Model not found at {path}. Download it with "
+                f"`python scripts/download_model.py <preset>`, where <preset> is "
+                f"one of: {', '.join(sorted(MODEL_PRESETS))}."
             )
         return path
 

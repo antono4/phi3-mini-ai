@@ -34,9 +34,18 @@ a small web chat UI.
   (static hosting; it auto-targets the public backend on port 12000). Local
   preview: `http://localhost:12000/`.
 - Smoke test: `.venv/bin/python scripts/smoke_test.py` (expects "ALL TESTS PASSED").
+- Full API test: `.venv/bin/python scripts/api_test.py` while the server runs
+  (50 checks: presets, validation, SSE, OpenAI routes, CORS, error mapping).
 - `models/*.gguf` and `llama.cpp/` are gitignored; don't commit them.
 
 ## Gotchas
+- Only one GGUF is kept in memory at a time. `get_engine()` closes the previous
+  engine before loading another model; caching one engine per model path leaks
+  ~2.5 GB per switch and will exhaust the sandbox (seen: 10.8 GB RSS). If you
+  change the cache, keep the single-model behavior and the `close()` lock.
+- Inference errors are mapped to 4xx, not 500: a missing model file → 404, a
+  prompt over `n_ctx` (llama.cpp `ValueError`) → 400. The streaming route emits
+  `event: error` before `event: done`; the web UI unwraps that event.
 - CORS is enabled (`PHI3_ALLOW_ORIGIN`, default `*`) so browser clients such as
   the Marbel AI GitHub Pages UI can call `/v1/chat/completions` directly. Set a
   specific origin in production.
