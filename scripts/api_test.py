@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Comprehensive end-to-end API test harness (no external deps beyond stdlib)."""
+import base64
 import json
 import sys
 import urllib.error
@@ -20,19 +21,30 @@ def check(name, cond, detail=""):
         print(f"FAIL | {name} :: {detail}")
 
 
-def req(method, path, body=None, headers=None, timeout=180):
+def req(method, path, body=None, headers=None, timeout=180, binary=False):
+    """Perform a request. Returns ``(status, headers, payload)`` where payload is
+    ``bytes`` when ``binary=True`` and ``str`` otherwise.
+
+    ``headers`` is keyed by lowercase name, because HTTP header names are
+    case-insensitive and a plain ``dict`` is not.
+    """
     url = BASE + path
     data = json.dumps(body).encode() if body is not None else None
     r = urllib.request.Request(url, data=data, method=method)
     r.add_header("Content-Type", "application/json")
     for k, v in (headers or {}).items():
         r.add_header(k, v)
+
+    def _hdrs(resp):
+        return {k.lower(): v for k, v in resp.headers.items()}
+
     try:
         with urllib.request.urlopen(r, timeout=timeout) as resp:
-            raw = resp.read().decode()
-            return resp.status, dict(resp.headers), raw
+            raw = resp.read()
+            return resp.status, _hdrs(resp), (raw if binary else raw.decode())
     except urllib.error.HTTPError as e:
-        return e.code, dict(e.headers), e.read().decode()
+        raw = e.read()
+        return e.code, _hdrs(e), (raw if binary else raw.decode())
 
 
 # ---------------------------------------------------------------- health
@@ -162,6 +174,80 @@ check("openai overflow -> 400 (not 500)", st == 400, f"status={st}")
 
 st, hdr, raw = req("POST", "/v1/chat/stream", {"messages": [{"role": "user", "content": long_prompt}], "max_tokens": 8})
 check("stream overflow -> SSE error event", "event: error" in raw and "context" in raw.lower(), raw[:120])
+
+# ------------------------------------------------------- media (foto & video)
+st, _, raw = req("GET", "/v1/media/status")
+check("GET /v1/media/status -> 200", st == 200, f"status={st}")
+mstatus = json.loads(raw) if st == 200 else {}
+check("media status reports a device", mstatus.get("device") == "cpu", str(mstatus.get("device")))
+
+if not mstatus.get("available"):
+    print("SKIP | media model not installed; skipping generation checks")
+else:
+    # A tiny image keeps this fast on CPU; 256px/1 step is a few seconds.
+    st, _, raw = req("POST", "/v1/media/image",
+                     {"prompt": "a red apple on a wooden table", "size": 256, "steps": 1, "seed": 1234})
+    check("POST /v1/media/image -> 200", st == 200, f"status={st}")
+    img = json.loads(raw) if st == 200 else {}
+    check("image response carries a seed", img.get("seed") == 1234, str(img.get("seed")))
+    check("image mime is png", img.get("mime") == "image/png", str(img.get("mime")))
+    png = base64.b64decode(img.get("image", "")) if img.get("image") else b""
+    check("image decodes to a PNG", png[:8] == b"\x89PNG\r\n\x1a\n", repr(png[:8]))
+    check("image is not a stub", len(png) > 2000, f"{len(png)} bytes")
+
+    # Same seed must reproduce the same bytes, or the seed field is a lie.
+    st, _, raw2 = req("POST", "/v1/media/image",
+                      {"prompt": "a red apple on a wooden table", "size": 256, "steps": 1, "seed": 1234})
+    img2 = json.loads(raw2)
+    check("same seed reproduces the image", img2.get("image") == img.get("image"))
+
+    # Raw format returns the file itself with the seed in a header.
+    st, hdr, raw3 = req("POST", "/v1/media/image",
+                        {"prompt": "a green leaf", "size": 128, "steps": 1, "seed": 5, "format": "raw"},
+                        binary=True)
+    check("image raw -> 200", st == 200, f"status={st}")
+    check("image raw content-type", hdr.get("content-type") == "image/png", str(hdr.get("content-type")))
+    check("image raw X-Seed header", hdr.get("x-seed") == "5", str(hdr.get("x-seed")))
+    check("image raw body is a PNG", raw3[:8] == b"\x89PNG\r\n\x1a\n", repr(raw3[:8]))
+
+    # Validation.
+    st, _, _ = req("POST", "/v1/media/image", {"prompt": "", "size": 256})
+    check("empty image prompt -> 422", st == 422, f"status={st}")
+    st, _, _ = req("POST", "/v1/media/image", {"prompt": "x", "size": 4096})
+    check("image size out of range -> 422", st == 422, f"status={st}")
+    st, _, _ = req("POST", "/v1/media/video", {"prompt": "x", "size": "999p"})
+    check("video size not allowed -> 422", st == 422, f"status={st}")
+    st, _, _ = req("POST", "/v1/media/video", {"prompt": "x", "seconds": 99})
+    check("video seconds too long -> 422", st == 422, f"status={st}")
+    st, _, _ = req("GET", "/v1/media/image")
+    check("GET on media POST route -> 405", st == 405, f"status={st}")
+
+    # The shortest possible clip: 1s at 4fps is 4 frames.
+    st, _, raw = req("POST", "/v1/media/video",
+                     {"prompt": "a paper boat on calm water", "seconds": 1, "fps": 4,
+                      "size": "384p", "steps": 1, "seed": 7}, timeout=900)
+    check("POST /v1/media/video -> 200", st == 200, f"status={st}")
+    vid = json.loads(raw) if st == 200 else {}
+    check("video reports 4 frames", vid.get("frames") == 4, str(vid.get("frames")))
+    check("video mime is mp4", vid.get("mime") == "video/mp4", str(vid.get("mime")))
+    mp4 = base64.b64decode(vid.get("video", "")) if vid.get("video") else b""
+    check("video has the ISO-BMFF signature", mp4[4:12] == b"ftypisom", repr(mp4[4:12]))
+    check("video is not a stub", len(mp4) > 10000, f"{len(mp4)} bytes")
+
+    # Raw video returns the MP4 with frame count and seed in headers.
+    st, hdr, rawv = req("POST", "/v1/media/video",
+                        {"prompt": "a paper boat on calm water", "seconds": 1, "fps": 4,
+                         "size": "384p", "steps": 1, "seed": 8, "format": "raw"},
+                        timeout=900, binary=True)
+    check("video raw -> 200", st == 200, f"status={st}")
+    check("video raw content-type", hdr.get("content-type") == "video/mp4", str(hdr.get("content-type")))
+    check("video raw X-Frames header", hdr.get("x-frames") == "4", str(hdr.get("x-frames")))
+    check("video raw body is MP4", rawv[4:12] == b"ftypisom", repr(rawv[4:12]))
+
+    # Text chat must still work after the media model evicted it.
+    st, _, raw = req("POST", "/v1/chat",
+                     {"messages": [{"role": "user", "content": "Say OK"}], "max_tokens": 16}, timeout=600)
+    check("text chat still works after media", st == 200 and "content" in raw, f"status={st}")
 
 print(f"\n{'='*40}\n{passes} passed, {len(fails)} failed")
 if fails:

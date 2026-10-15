@@ -306,6 +306,95 @@
   .chip svg { width: 15px; height: 15px; flex: none; color: var(--accent); }
   .chip:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--text); transform: translateY(-1px); }
 
+  /* ----------------------------------------------------------- mode switch */
+  .tabs {
+    display: flex; gap: 2px; padding: 3px; flex: none;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-full);
+  }
+  .tab {
+    appearance: none; border: 0; cursor: pointer; font: inherit; font-size: 12.5px;
+    font-weight: 600; color: var(--text-2); background: transparent; white-space: nowrap;
+    padding: 6px 13px; border-radius: var(--r-full);
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
+  }
+  .tab:hover { color: var(--text); }
+  .tab[aria-selected="true"] { background: var(--accent); color: #fff; }
+  .tab svg { width: 14px; height: 14px; flex: none; }
+
+  /* ---------------------------------------------------------------- media */
+  .media-wrap { display: none; overflow-y: auto; padding: 22px 20px 10px; }
+  body.media-mode .media-wrap { display: block; }
+  body.media-mode #chat, body.media-mode .chat-empty { display: none; }
+  .media-inner { width: 100%; max-width: var(--shell); margin-inline: auto; }
+  .media-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+  .media-head h2 { margin: 0; font-size: 19px; letter-spacing: -.02em; }
+  .media-head p { margin: 3px 0 0; color: var(--text-2); font-size: 13px; }
+  /* `hidden` must win over display, so these are gated on :not([hidden]). */
+  .media-note:not([hidden]) {
+    display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px;
+    color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--r-sm); padding: 10px 12px; margin-bottom: 14px;
+  }
+  .media-note svg { width: 15px; height: 15px; flex: none; margin-top: 2px; color: var(--accent); }
+  .params:not([hidden]) { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
+  .params label:not([hidden]) { display: grid; gap: 4px; font-size: 11px; font-weight: 600; color: var(--text-2); }
+  .params select, .params input {
+    font: inherit; font-size: 12.5px; color: var(--text); background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: var(--r-xs); padding: 7px 9px; min-height: 34px;
+  }
+  .params .wide { min-width: 150px; }
+  .params .grow { flex: 1 1 auto; min-width: 140px; }
+  .seed-row { display: flex; gap: 6px; align-items: center; }
+  .seed-row input { width: 108px; }
+  .busy {
+    display: none; align-items: center; gap: 11px; margin-bottom: 14px;
+    background: var(--accent-soft); border: 1px solid var(--border-strong);
+    border-radius: var(--r-sm); padding: 12px 14px; font-size: 13px; color: var(--text);
+  }
+  .busy[data-on="1"] { display: flex; }
+  .spin {
+    width: 16px; height: 16px; flex: none; border-radius: 50%;
+    border: 2px solid var(--border-strong); border-top-color: var(--accent);
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.4s; } }
+  .busy-text { display: grid; gap: 1px; }
+  .busy-text small { color: var(--text-2); font-size: 11.5px; }
+
+  .media-empty { text-align: center; padding: 26px 10px 34px; color: var(--muted); }
+  .media-empty svg { width: 34px; height: 34px; opacity: .5; margin-bottom: 10px; }
+  .media-empty p { margin: 0; font-size: 13px; }
+
+  .gallery { display: grid; gap: 16px; }
+  .shot {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md);
+    overflow: hidden; box-shadow: var(--shadow);
+  }
+  .shot img, .shot video { display: block; width: 100%; height: auto; background: var(--code-bg); }
+  .shot-bar {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+    border-top: 1px solid var(--border); font-size: 12px; color: var(--text-2);
+  }
+  .shot-bar .prompt {
+    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    color: var(--text);
+  }
+  .shot-bar .tag {
+    flex: none; font-size: 11px; font-weight: 600; color: var(--text-2);
+    background: var(--surface-3); border-radius: var(--r-full); padding: 2px 8px;
+  }
+  .shot-actions { display: flex; gap: 4px; flex: none; }
+  .shot-actions a, .shot-actions button {
+    appearance: none; display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: var(--r-xs); cursor: pointer;
+    color: var(--text-2); background: transparent; border: 1px solid transparent; text-decoration: none;
+    transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
+  }
+  .shot-actions a:hover, .shot-actions button:hover { color: var(--text); background: var(--surface-3); border-color: var(--border); }
+  .shot-actions svg { width: 15px; height: 15px; }
+
   /* ------------------------------------------------------------ composer */
   .composer-wrap {
     position: sticky; bottom: 0;
@@ -405,6 +494,9 @@
     .field-inline > span { display: none; }
     .msg { max-width: 88%; }
     .empty .chips { grid-template-columns: 1fr; }
+    .tab span { display: none; }
+    .tab { padding: 7px 10px; }
+    .media-wrap { padding: 18px 14px 8px; }
   }
   @media (max-width: 520px) {
     .topbar { flex-wrap: wrap; gap: 10px; }
@@ -412,6 +504,9 @@
     .status { order: 3; margin-left: 0; max-width: none; flex: 1 1 100%; }
     .avatar { display: none; }
     .msg { max-width: 94%; }
+    .shot-bar .tag { display: none; }
+    .params label { flex: 1 1 44%; }
+    .params select, .params input { width: 100%; }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
@@ -439,6 +534,17 @@
       </div>
     </div>
 
+    <div class="tabs" role="tablist" aria-label="Mode">
+      <button class="tab" id="tabChat" role="tab" type="button" aria-selected="true" aria-controls="chat" title="Mode chat teks">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 15.5a2.5 2.5 0 0 1-2.5 2.5H8l-4 3V6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5Z"/></svg>
+        <span>Chat</span>
+      </button>
+      <button class="tab" id="tabMedia" role="tab" type="button" aria-selected="false" aria-controls="mediaPanel" title="Buat foto dan video">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-4.5 4 3.5 3-2.5 4 3.5"/></svg>
+        <span>Foto &amp; Video</span>
+      </button>
+    </div>
+
     <div class="status" role="status" aria-live="polite">
       <span class="dot" id="dot"></span>
       <span class="status-text" id="modelLabel">menghubungkan…</span>
@@ -463,6 +569,81 @@
   </header>
 
   <main id="chat" tabindex="-1" aria-label="Percakapan" aria-live="polite" aria-busy="false"></main>
+
+  <section class="media-wrap" id="mediaPanel" aria-labelledby="mediaTitle">
+    <div class="media-inner">
+      <div class="media-head">
+        <div>
+          <h2 id="mediaTitle">Foto &amp; Video</h2>
+          <p id="mediaSub">Buat gambar dari teks, lalu susun jadi klip pendek.</p>
+        </div>
+      </div>
+
+      <div class="media-note" id="mediaNote" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+        <span id="mediaNoteText"></span>
+      </div>
+
+      <div class="params">
+        <label class="grow">Ukuran
+          <select id="mediaSize">
+            <option value="256">256 px · cepat</option>
+            <option value="384">384 px</option>
+            <option value="512" selected>512 px · standar</option>
+            <option value="640">640 px · lambat</option>
+          </select>
+        </label>
+        <label>Langkah
+          <select id="mediaSteps">
+            <option value="1" selected>1 · tercepat</option>
+            <option value="2">2 · lebih halus</option>
+            <option value="4">4 · paling halus</option>
+          </select>
+        </label>
+        <label id="videoOnly" hidden>Durasi
+          <select id="mediaSeconds">
+            <option value="1">1 detik</option>
+            <option value="2" selected>2 detik</option>
+            <option value="3">3 detik</option>
+            <option value="4">4 detik</option>
+          </select>
+        </label>
+        <label id="videoSizeOnly" hidden>Bingkai video
+          <select id="mediaVideoSize">
+            <option value="512x288" selected>512×288 · lanskap</option>
+            <option value="384p">384×384 · kotak</option>
+            <option value="512p">512×512 · lambat</option>
+          </select>
+        </label>
+        <label>Seed
+          <span class="seed-row">
+            <input id="mediaSeed" type="number" min="-1" step="1" value="-1" title="Isi -1 untuk acak" />
+            <button class="btn ghost" type="button" id="mediaSeedDice" title="Acak seed" aria-label="Acak seed">↺</button>
+          </span>
+        </label>
+        <label class="grow">Aksi
+          <div class="seed-row">
+            <button class="btn" type="button" id="mediaImageBtn">Buat foto</button>
+            <button class="btn" type="button" id="mediaVideoBtn">Buat video</button>
+          </div>
+        </label>
+      </div>
+
+      <div class="busy" id="mediaBusy" data-on="0" role="status" aria-live="polite">
+        <span class="spin" aria-hidden="true"></span>
+        <span class="busy-text">
+          <span id="mediaBusyLabel">Memproses…</span>
+          <small id="mediaBusyHint"></small>
+        </span>
+      </div>
+
+      <div class="gallery" id="mediaGallery"></div>
+      <div class="media-empty" id="mediaEmpty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-4.5 4 3.5 3-2.5 4 3.5"/></svg>
+        <p>Tulis deskripsi di bawah, lalu pilih <strong>Buat foto</strong> atau <strong>Buat video</strong>.</p>
+      </div>
+    </div>
+  </section>
 
   <footer class="composer-wrap">
     <form class="composer" id="form">
@@ -880,6 +1061,210 @@
     bar.appendChild(btn);
   }
 
+  // --- mode switch (chat vs foto/video) ------------------------------------
+  const modeTabs = { chat: el("tabChat"), media: el("tabMedia") };
+  const mediaRefs = {
+    size: el("mediaSize"), steps: el("mediaSteps"), seconds: el("mediaSeconds"),
+    videoSize: el("mediaVideoSize"), seed: el("mediaSeed"),
+    imageBtn: el("mediaImageBtn"), videoBtn: el("mediaVideoBtn"),
+    busy: el("mediaBusy"), busyLabel: el("mediaBusyLabel"), busyHint: el("mediaBusyHint"),
+    gallery: el("mediaGallery"), empty: el("mediaEmpty"), note: el("mediaNote"),
+    noteText: el("mediaNoteText"), sub: el("mediaSub"), dice: el("mediaSeedDice"),
+    videoOnly: el("videoOnly"), videoSizeOnly: el("videoSizeOnly"),
+  };
+  let mode = "chat";
+  let mediaBusy = false;
+  let mediaReady = false;
+  const mediaPrefs = {
+    get size() { return localStorage.getItem("phi3_media_size") || "512"; },
+    set size(v) { localStorage.setItem("phi3_media_size", v); },
+    get steps() { return localStorage.getItem("phi3_media_steps") || "1"; },
+    set steps(v) { localStorage.setItem("phi3_media_steps", v); },
+  };
+
+  function setMode(next, focus = true) {
+    mode = next === "media" ? "media" : "chat";
+    document.body.classList.toggle("media-mode", mode === "media");
+    modeTabs.chat.setAttribute("aria-selected", String(mode === "chat"));
+    modeTabs.media.setAttribute("aria-selected", String(mode === "media"));
+    // The composer keeps its job in both modes: in media mode its text is the
+    // image/video prompt.
+    input.placeholder = mode === "media"
+      ? "Deskripsikan gambar…  (mis. kucing oranye di jendela, foto sinar pagi)"
+      : "Tulis pesan…  (Enter kirim · Shift+Enter baris baru)";
+    el("mediaSub").textContent = mode === "media"
+      ? "Tulis deskripsi di kolom bawah, lalu pilih Buat foto atau Buat video."
+      : "Buat gambar dari teks, lalu susun jadi klip pendek.";
+    syncVideoFields();
+    if (mode === "media") loadMediaStatus();
+    if (focus) input.focus();
+  }
+  modeTabs.chat.addEventListener("click", () => setMode("chat"));
+  modeTabs.media.addEventListener("click", () => setMode("media"));
+
+  async function loadMediaStatus() {
+    if (!API) return;
+    try {
+      const res = await fetch(API + "/v1/media/status");
+      if (!res.ok) return;
+      const data = await res.json();
+      mediaReady = !!data.available;
+      mediaRefs.note.hidden = mediaReady;
+      if (!mediaReady) {
+        mediaRefs.noteText.textContent =
+          "Model gambar belum terpasang di server. Jalankan: python scripts/download_media_model.py";
+      }
+    } catch { /* leave the previous state */ }
+  }
+
+  function setMediaBusy(on, label, hint) {
+    mediaBusy = on;
+    mediaRefs.busy.dataset.on = on ? "1" : "0";
+    mediaRefs.busyLabel.textContent = label || "Memproses…";
+    mediaRefs.busyHint.textContent = hint || "";
+    mediaRefs.imageBtn.disabled = on;
+    mediaRefs.videoBtn.disabled = on;
+  }
+
+  function syncVideoFields() {
+    const isVideo = mode === "media";
+    mediaRefs.videoOnly.hidden = !isVideo;
+    mediaRefs.videoSizeOnly.hidden = !isVideo;
+  }
+
+  // Rough guidance only; real time depends on the machine.
+  function estimateHint(kind) {
+    const size = parseInt(mediaRefs.size.value, 10) || 512;
+    const steps = parseInt(mediaRefs.steps.value, 10) || 1;
+    const perStep = size >= 512 ? 22 : size >= 384 ? 13 : 6;
+    if (kind === "image") return `perkiraan ${Math.ceil(steps * perStep)} detik di CPU`;
+    const frames = (parseInt(mediaRefs.seconds.value, 10) || 2) * 8;
+    const vsize = mediaRefs.videoSize.value;
+    const per = vsize === "512p" ? 22 : vsize === "384p" ? 12 : 13;
+    return `${frames} bingkai · perkiraan ${Math.ceil((frames * per * steps) / 60)} menit di CPU`;
+  }
+
+  function addShot(kind, mime, base64, meta) {
+    const box = document.createElement("div");
+    box.className = "shot";
+    let node;
+    if (kind === "video") {
+      node = document.createElement("video");
+      node.controls = true;
+      node.loop = true;
+      node.playsInline = true;
+      node.muted = true;
+    } else {
+      node = document.createElement("img");
+      node.alt = meta.prompt;
+      node.loading = "lazy";
+    }
+    const url = `data:${mime};base64,${base64}`;
+    node.src = url;
+    box.appendChild(node);
+
+    const bar = document.createElement("div");
+    bar.className = "shot-bar";
+    const prompt = document.createElement("span");
+    prompt.className = "prompt";
+    prompt.textContent = meta.prompt;
+    prompt.title = meta.prompt;
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent = kind === "video"
+      ? `${meta.frames} bingkai · seed ${meta.seed}`
+      : `seed ${meta.seed}`;
+    const actions = document.createElement("span");
+    actions.className = "shot-actions";
+
+    const dl = document.createElement("a");
+    dl.href = url;
+    dl.download = `${kind === "video" ? "video" : "foto"}-${meta.seed}.${kind === "video" ? "mp4" : "png"}`;
+    dl.title = "Unduh";
+    dl.setAttribute("aria-label", "Unduh");
+    dl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M5 19h14"/></svg>';
+
+    const reuse = document.createElement("button");
+    reuse.type = "button";
+    reuse.title = "Pakai seed ini lagi";
+    reuse.setAttribute("aria-label", "Pakai seed ini lagi");
+    reuse.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4.5V10h5.5"/></svg>';
+    reuse.addEventListener("click", () => { mediaRefs.seed.value = meta.seed; });
+
+    const del = document.createElement("button");
+    del.type = "button";
+    del.title = "Hapus dari daftar";
+    del.setAttribute("aria-label", "Hapus");
+    del.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V5h6v2"/><path d="M6 7l1 13h10l1-13"/></svg>';
+    del.addEventListener("click", () => {
+      box.remove();
+      mediaRefs.empty.hidden = mediaRefs.gallery.childElementCount > 0;
+    });
+
+    actions.append(dl, reuse, del);
+    bar.append(prompt, tag, actions);
+    box.appendChild(bar);
+    // Newest first, so the result of a long job is visible without scrolling.
+    mediaRefs.gallery.prepend(box);
+    mediaRefs.empty.hidden = true;
+  }
+
+  async function makeMedia(kind) {
+    if (mediaBusy) return;
+    const prompt = input.value.trim();
+    if (!prompt) { input.focus(); return; }
+    if (!API) {
+      const h = await refreshHealth();
+      if (!h) { setMediaBusy(false); mediaRefs.noteText.textContent = "Server API tidak terjangkau."; mediaRefs.note.hidden = false; return; }
+    }
+    if (!mediaReady) { await loadMediaStatus(); }
+    if (!mediaReady) {
+      mediaRefs.note.hidden = false;
+      return;
+    }
+
+    const seed = parseInt(mediaRefs.seed.value, 10);
+    const steps = parseInt(mediaRefs.steps.value, 10) || 1;
+    setMediaBusy(true, kind === "video" ? "Menyusun video…" : "Menggambar…", estimateHint(kind));
+    try {
+      const body = kind === "video"
+        ? { prompt, steps, seed: Number.isFinite(seed) ? seed : -1,
+            seconds: parseInt(mediaRefs.seconds.value, 10) || 2,
+            size: mediaRefs.videoSize.value }
+        : { prompt, steps, seed: Number.isFinite(seed) ? seed : -1,
+            size: parseInt(mediaRefs.size.value, 10) || 512 };
+      const res = await fetch(`${API}/v1/media/${kind}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        let detail = `HTTP ${res.status}`;
+        try { detail = (await res.json()).detail || detail; } catch { /* non-JSON error */ }
+        throw new Error(detail);
+      }
+      const data = await res.json();
+      if (kind === "video") {
+        addShot("video", data.mime, data.video, { prompt, seed: data.seed, frames: data.frames });
+      } else {
+        addShot("image", data.mime, data.image, { prompt, seed: data.seed });
+      }
+    } catch (err) {
+      mediaRefs.note.hidden = false;
+      mediaRefs.noteText.textContent = "Gagal membuat " + (kind === "video" ? "video" : "foto") + ": " + err.message;
+    } finally {
+      setMediaBusy(false);
+    }
+  }
+
+  mediaRefs.imageBtn.addEventListener("click", () => makeMedia("image"));
+  mediaRefs.videoBtn.addEventListener("click", () => makeMedia("video"));
+  mediaRefs.dice.addEventListener("click", () => {
+    mediaRefs.seed.value = Math.floor(Math.random() * 2 ** 31);
+  });
+  mediaRefs.size.addEventListener("change", () => { mediaPrefs.size = mediaRefs.size.value; });
+  mediaRefs.steps.addEventListener("change", () => { mediaPrefs.steps = mediaRefs.steps.value; });
+
   // --- messaging -----------------------------------------------------------
   // `echo` is false when regenerating: the user turn is already in the DOM and
   // in `history`, so only the answer should be produced again.
@@ -982,7 +1367,13 @@
     }
   }
 
-  form.addEventListener("submit", (e) => { e.preventDefault(); send(input.value); });
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    // In media mode the composer holds the image/video prompt, so Enter makes a
+    // photo; the Video button is the explicit way to pay for a long job.
+    if (mode === "media") makeMedia("image");
+    else send(input.value);
+  });
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
   });
@@ -1065,7 +1456,11 @@
 
   // --- init ----------------------------------------------------------------
   showEmpty();
-  refreshHealth().then((h) => { if (h) input.focus(); });
+  // Restore the media parameters the user last chose.
+  mediaRefs.size.value = mediaPrefs.size;
+  mediaRefs.steps.value = mediaPrefs.steps;
+  setMode("chat", false);
+  refreshHealth().then((h) => { if (h) { input.focus(); loadMediaStatus(); } });
   setInterval(() => { if (!streaming) refreshHealth(); }, 30000);
 })();
 </script>

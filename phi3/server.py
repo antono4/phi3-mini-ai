@@ -4,6 +4,7 @@ Endpoints:
     GET  /health            liveness + model info
     POST /v1/chat           non-streaming JSON completion
     POST /v1/chat/stream    Server-Sent Events token stream
+    /v1/media/*             image generation and video assembly (see media_api)
     GET  /                  small chat UI served from static/index.html
 """
 
@@ -20,6 +21,7 @@ from pydantic import BaseModel, Field
 from . import __version__
 from .config import MODEL_PRESETS, PROJECT_ROOT, settings
 from .engine import get_engine
+from .media_api import router as media_router
 from .openai_api import router as openai_router
 
 app = FastAPI(title="Phi-3 Mini API", version=__version__)
@@ -32,6 +34,7 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
 )
 app.include_router(openai_router)
+app.include_router(media_router)
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 
