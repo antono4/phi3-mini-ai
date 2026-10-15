@@ -30,7 +30,9 @@ a small web chat UI.
 
 ## Running / testing
 - Start the server: `./run.sh` (port 12000; respects `PHI3_PORT`,
-  `PHI3_MODEL_PATH`). Public preview: `https://work-1-<host>/` (port 12000).
+  `PHI3_MODEL_PATH`). Web UI: `https://antono4.github.io/phi3-mini-ai/static/`
+  (static hosting; it auto-targets the public backend on port 12000). Local
+  preview: `http://localhost:12000/`.
 - Smoke test: `.venv/bin/python scripts/smoke_test.py` (expects "ALL TESTS PASSED").
 - `models/*.gguf` and `llama.cpp/` are gitignored; don't commit them.
 
