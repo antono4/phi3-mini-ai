@@ -1,0 +1,14 @@
+# Extra dependencies for Foto & Video mode (image generation + video assembly).
+# The text chatbot works without these; install them only if you want media:
+#   .venv/bin/pip install -r requirements-media.txt
+#   .venv/bin/python scripts/download_media_model.py
+#
+# torch is pulled in by diffusers. The CPU wheel is enough here because the
+# project targets CPU-only machines; a GPU box can install a CUDA build instead.
+diffusers>=0.31
+transformers>=4.44
+accelerate>=0.33
+safetensors>=0.4
+pillow>=10.0
+# Bundles a static ffmpeg binary, so video assembly needs no system package.
+imageio-ffmpeg>=0.5

@@ -10,6 +10,7 @@ from typing import Any
 from llama_cpp import Llama
 
 from .config import Settings, settings as default_settings
+from .model_slot import slot
 
 
 class Phi3Engine:
@@ -162,27 +163,16 @@ class Phi3Engine:
         }
 
 
-_current: tuple[str, Phi3Engine] | None = None
-_switch_lock = threading.Lock()
-
-
 def get_engine(config: Settings | None = None) -> Phi3Engine:
     """Return the engine for the requested model.
 
-    Only one model is kept in memory at a time: loading a second GGUF while the
-    first is still resident doubles the RAM footprint and can exhaust the
-    machine, so asking for a different model closes the previous engine first.
-    The returned engine is safe to use after the switch because the caller's
-    generation holds the engine's own lock, which ``close`` waits on.
+    Only one heavyweight model is resident at a time: loading a second GGUF (or
+    the image model) while the first is still in memory doubles the footprint
+    and can exhaust the machine, so asking for a different model evicts the
+    previous one. The returned engine is safe to use after the switch because
+    the caller's generation holds the engine's own lock, which ``close`` waits
+    on.
     """
-    global _current
     config = config or default_settings
     key = str(config.resolved_model_path())
-    with _switch_lock:
-        if _current is not None and _current[0] == key:
-            return _current[1]
-        if _current is not None:
-            _current[1].close()
-        engine = Phi3Engine(config)
-        _current = (key, engine)
-        return engine
+    return slot.acquire(key, lambda: Phi3Engine(config))

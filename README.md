@@ -9,7 +9,7 @@ sehingga cukup untuk dijalankan tanpa GPU.
 
 ## Fitur
 
-- Inferensi lokal penuh â€” tanpa panggilan API eksternal saat runtime.
+- Inferensi lokal penuh Ă˘â‚¬â€ť tanpa panggilan API eksternal saat runtime.
 - Chat CLI dengan streaming token dan riwayat percakapan.
 - REST API (non-streaming & SSE streaming).
 - **Endpoint kompatibel OpenAI** (`/v1/chat/completions`, `/v1/completions`,
@@ -18,8 +18,11 @@ sehingga cukup untuk dijalankan tanpa GPU.
 - Pilihan model lewat preset `q4` (default, ~2,3 GB) dan `q8` (~4,7 GB).
 - Web UI chat satu berkas (disajikan langsung oleh server): tema terang/gelap,
   render markdown + blok kode, tombol salin dan ulangi jawaban, serta pemilih
-  preset model — tanpa build step dan tanpa CDN.
+  preset model â€” tanpa build step dan tanpa CDN.
 - **Pipeline fine-tuning LoRA**: latih adapter, merge ke base, ekspor ke GGUF.
+- **Mode Foto & Video**: buat gambar dari teks (Stable Diffusion `sd-turbo`) dan
+  susun jadi klip MP4 pendek, langsung dari Web UI. Lihat
+  [Mode Foto & Video](#mode-foto--video).
 - Konfigurasi lewat variabel environment.
 
 ## Instalasi
@@ -66,7 +69,10 @@ python -m phi3.cli -p "Jelaskan fotosintesis secara singkat."
 | POST | `/v1/chat/completions` | Chat completion kompatibel OpenAI (JSON/SSE) |
 | POST | `/v1/completions` | Text completion kompatibel OpenAI (legacy) |
 | GET | `/v1/models` | Daftar model (preset) |
-| GET | `/` | Web UI chat |
+| GET | `/v1/media/status` | Status model gambar (tersedia/tidak) |
+| POST | `/v1/media/image` | Teks → PNG (JSON base64 atau PNG mentah) |
+| POST | `/v1/media/video` | Teks → MP4 (JSON base64 atau MP4 mentah) |
+| GET | `/` | Web UI chat + Foto & Video |
 
 Contoh:
 
@@ -111,17 +117,20 @@ Semua pengaturan dapat dioverride lewat environment variable:
 | `PHI3_SYSTEM_PROMPT` | (bawaan) | Peran/persona asisten |
 | `PHI3_PORT` | `12000` | Port server |
 | `PHI3_ALLOW_ORIGIN` | `*` | Origin yang diizinkan CORS |
+| `PHI3_MEDIA_MODEL` | `models/media/sd-turbo` | Lokasi model gambar |
 
 ## Pengujian
 
 ```bash
 python scripts/smoke_test.py        # engine + skema (butuh model)
-python scripts/api_test.py          # uji menyeluruh REST + OpenAI API (server harus jalan)
+python scripts/api_test.py          # uji menyeluruh REST + OpenAI + media (server harus jalan)
 ```
 
 `api_test.py` memeriksa health/preset, validasi input, keempat preset, streaming
-SSE, endpoint kompatibel OpenAI, CORS, dan penanganan error (model hilang → 404,
-prompt melebihi context window → 400).
+SSE, endpoint kompatibel OpenAI, CORS, penanganan error (model hilang → 404,
+prompt melebihi context window → 400), serta endpoint media (PNG/MP4 valid,
+reproduksi seed, format `raw`, dan validasi parameter). Bagian media otomatis
+dilewati bila model gambar belum diunduh.
 
 ## Struktur proyek
 
@@ -129,20 +138,26 @@ prompt melebihi context window → 400).
 phi3/
   config.py    # konfigurasi terpusat (+ preset model)
   engine.py    # wrapper llama.cpp (chat + streaming)
+  model_slot.py# slot bersama: model teks & gambar tidak dimuat bersamaan
+  media.py     # pembuatan gambar + perakitan video
+  media_api.py # endpoint /v1/media/*
   openai_api.py# endpoint kompatibel OpenAI
   cli.py       # chat terminal
   server.py    # FastAPI: UI + REST API
 static/
-  index.html   # web UI chat
+  index.html   # web UI chat + tab Foto & Video
 scripts/
   download_model.py
+  download_media_model.py # unduh model gambar (sd-turbo)
   train_lora.py        # latih adapter LoRA
   merge_and_convert.py # merge adapter + ekspor GGUF
   test_adapter.py      # uji adapter
   smoke_test.py
+  api_test.py          # uji REST + OpenAI + media
 data/
   sample_instructions.jsonl
 requirements.txt       # dependensi runtime
+requirements-media.txt # dependensi mode Foto & Video
 requirements-lora.txt  # dependensi pipeline LoRA
 run.sh         # start server
 ```
@@ -164,6 +179,84 @@ print(resp.choices[0].message.content)
 
 Nilai `model` boleh `phi-3-mini` (default), atau preset `q4`/`q8` untuk memilih
 bobot tertentu.
+
+## Mode Foto & Video
+
+Selain teks, aplikasi bisa membuat **gambar** dan **video pendek** dari deskripsi
+teks. Buka tab **Foto & Video** di Web UI, tulis deskripsi di kolom bawah, lalu
+pilih **Buat foto** atau **Buat video**.
+
+Cara kerja dan batasannya:
+
+- **Gambar** dibuat dengan `sd-turbo` (Stable Diffusion Turbo). Model ini
+  *step-distilled*: satu langkah denoising sudah menghasilkan gambar yang layak,
+  jadi ±6 detik pada 256 px dan ±22 detik pada 512 px di CPU 4 core.
+- **Video** bukan model text-to-video. Tidak ada model video lokal yang muat di
+  CPU, jadi klip dibuat dengan cara menghasilkan beberapa keyframe memakai model
+  gambar (tiap bingkai memakai seed berbeda sedikit agar tampak bergerak), lalu
+  digabung jadi MP4 H.264. Hasilnya lebih mirip *slideshow* beranimasi daripada
+  video sinematik.
+- Semua berjalan **di CPU**, tanpa GPU dan tanpa API eksternal.
+- Video itu mahal: 1 detik @ 8 fps berarti 8 kali pembuatan gambar. Satu klip
+  2 detik bisa memakan beberapa menit.
+
+### Memasang model gambar
+
+Model gambar bersifat opsional. Chat teks tetap jalan tanpa ini:
+
+```bash
+pip install -r requirements-media.txt        # diffusers, pillow, imageio-ffmpeg
+python scripts/download_media_model.py       # unduh sd-turbo (~2,5 GB)
+```
+
+Video tidak memerlukan `ffmpeg` sistem: paket `imageio-ffmpeg` sudah membawa
+binernya sendiri.
+
+Model gambar disimpan di `models/media/sd-turbo` dan **tidak** ikut masuk git.
+Lokasinya bisa diganti lewat `PHI3_MEDIA_MODEL`.
+
+### Memori
+
+Model teks dan model gambar tidak muat bersamaan di mesin 8–16 GB, jadi keduanya
+berbagi satu slot: memuat salah satu akan mengeluarkan yang lain dari memori.
+Akibatnya permintaan pertama setelah berpindah mode terasa lebih lambat karena
+modelnya dimuat ulang. Ini disengaja — tanpa itu, memuat keduanya sekaligus bisa
+kehabisan memori.
+
+### Contoh pemakaian
+
+```bash
+# Gambar: respons JSON berisi base64
+curl -X POST http://localhost:12000/v1/media/image \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt":"kucing oranye di jendela, cahaya pagi","size":512,"seed":42}'
+
+# Gambar: langsung dapat berkas PNG
+curl -X POST http://localhost:12000/v1/media/image \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt":"a red apple on a wooden table","size":512,"format":"raw"}' \
+  -o apple.png
+
+# Video: 2 detik @ 8 fps, ukuran lanskap 512x288
+curl -X POST http://localhost:12000/v1/media/video \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt":"a paper boat on calm water","seconds":2,"fps":8,"size":"512x288"}' \
+  -o clip.mp4
+```
+
+Parameter `POST /v1/media/image`:
+
+| Field | Default | Keterangan |
+| ----- | ------- | ---------- |
+| `prompt` | — | Deskripsi gambar (wajib, maks 1000 karakter) |
+| `negative_prompt` | — | Hal yang tidak diinginkan |
+| `steps` | `1` | Langkah denoising (1–8) |
+| `size` | `512` | Sisi gambar dalam px (128–768, dibulatkan ke kelipatan 8) |
+| `seed` | `-1` | `-1` = acak; seed sama menghasilkan gambar sama |
+| `format` | `json` | `json` (base64) atau `raw` (berkas PNG) |
+
+Parameter `POST /v1/media/video` sama, kecuali `size` memilih bingkai
+(`512x288`, `384p`, `512p`), ditambah `seconds` (1–4) dan `fps` (4–16).
 
 ## Fine-tuning LoRA
 
@@ -232,5 +325,5 @@ browser. Atur ke origin tertentu untuk produksi.
 
 ## Catatan performa
 
-Berjalan di CPU (4 vCPU, ~15 GB RAM). Kecepatan generasi kira-kira 10â€“15 token/detik.
+Berjalan di CPU (4 vCPU, ~15 GB RAM). Kecepatan generasi kira-kira 10Ă˘â‚¬â€ś15 token/detik.
 Naikkan `PHI3_N_GPU_LAYERS` bila ada GPU dengan build `llama-cpp-python` yang mendukung CUDA.

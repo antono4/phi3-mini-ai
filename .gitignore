@@ -3,7 +3,11 @@ __pycache__/
 .pytest_cache/
 models/*.gguf
 models/*.log
+# Downloaded media weights (~2.5 GB for sd-turbo) stay out of the repo.
+models/media/
 .venv/
 *.log
 llama.cpp/
 nohup.out
+# Playwright deps live in a symlink for UI tests; never commit them.
+node_modules
